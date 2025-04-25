@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spotify Downloader Pribadi</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen py-6">
+  <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
+    <h1 class="text-2xl font-bold mb-4 text-center">Spotify Downloader Pribadi</h1>
+    
+    <div class="space-y-4">
+      <input
+        type="text"
+        id="spotifyUrl"
+        placeholder="Masukkan URL Spotify"
+        class="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-500"
+      >
+      <button
+        id="downloadBtn"
+        class="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600 transition"
+      >
+        Unduh
+      </button>
+    </div>
+    
+    <div id="status" class="mt-4 text-center text-gray-600"></div>
+    
+    <div id="progressArea" class="mt-4 hidden">
+      <div class="w-full bg-gray-200 rounded-full h-2.5">
+        <div id="progressBar" class="bg-blue-600 h-2.5 rounded-full w-0 transition-all duration-300"></div>
+      </div>
+      <p id="progressText" class="text-sm text-center mt-2 text-gray-500">Memulai unduhan...</p>
+    </div>
+    
+    <div id="resultArea" class="mt-6 hidden">
+      <div class="bg-gray-50 p-4 rounded-lg">
+        <h3 class="font-bold text-lg mb-2" id="songTitle">Musik</h3>
+        <p class="text-sm text-gray-500 mb-3" id="songDetails">Detail lagu</p>
+        <div class="flex justify-between items-center">
+          <span class="text-xs text-gray-500" id="fileSize">0 MB</span>
+          <a id="downloadLink" href="#" class="bg-green-500 text-white py-2 px-4 rounded hover:bg-green-600 transition flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            Unduh MP3
+          </a>
+        </div>
+      </div>
+    </div>
+    
+    <div id="errorArea" class="mt-4 hidden">
+      <div class="bg-red-50 border-l-4 border-red-500 p-4">
+        <div class="flex">
+          <div class="flex-shrink-0">
+            <svg class="h-5 w-5 text-red-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+            </svg>
+          </div>
+          <div class="ml-3">
+            <p id="errorText" class="text-sm text-red-700">Error message</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const downloadBtn = document.getElementById('downloadBtn');
+    const status = document.getElementById('status');
+    const progressArea = document.getElementById('progressArea');
+    const progressBar = document.getElementById('progressBar');
+    const progressText = document.getElementById('progressText');
+    const resultArea = document.getElementById('resultArea');
+    const songTitle = document.getElementById('songTitle');
+    const songDetails = document.getElementById('songDetails');
+    const fileSize = document.getElementById('fileSize');
+    const downloadLink = document.getElementById('downloadLink');
+    const errorArea = document.getElementById('errorArea');
+    const errorText = document.getElementById('errorText');
+    
+    function resetUI() {
+      status.textContent = '';
+      progressArea.classList.add('hidden');
+      resultArea.classList.add('hidden');
+      errorArea.classList.add('hidden');
+      progressBar.style.width = '0%';
+      progressText.textContent = 'Memulai unduhan...';
+    }
+    
+    function showError(message) {
+      errorText.textContent = message;
+      errorArea.classList.remove('hidden');
+      progressArea.classList.add('hidden');
+    }
+    
+    function parseSongInfo(commandOutput) {
+      try {
+        const match = commandOutput.match(/Downloaded "([^"]+)":/);
+        return match && match[1] ? match[1] : 'Lagu Spotify';
+      } catch {
+        return 'Lagu Spotify';
+      }
+    }
+    
+    function simulateProgress() {
+      let progress = 0;
+      const interval = setInterval(() => {
+        if (progress >= 90) {
+          clearInterval(interval);
+          return;
+        }
+        
+        progress += Math.random() * 10;
+        progress = Math.min(progress, 90);
+        progressBar.style.width = `${progress}%`;
+        
+        progressText.textContent = progress < 30 ? 'Mengambil informasi lagu...' :
+          progress < 60 ? 'Mengunduh audio...' : 'Memproses file...';
+      }, 800);
+      return interval;
+    }
+    
+    downloadBtn.addEventListener('click', async () => {
+      const url = document.getElementById('spotifyUrl').value.trim();
+      
+      if (!url) return showError('Silakan masukkan URL Spotify');
+      if (!url.includes('spotify.com')) return showError('URL tidak valid');
+      
+      resetUI();
+      status.textContent = 'Memulai proses unduhan...';
+      progressArea.classList.remove('hidden');
+      
+      const progressInterval = simulateProgress();
+      downloadBtn.disabled = true;
+      downloadBtn.classList.add('opacity-50', 'cursor-not-allowed');
+      
+      try {
+        const response = await fetch('http://localhost:3000/api/download', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url })
+        });
+        
+        clearInterval(progressInterval);
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || `Server error: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          progressBar.style.width = '100%';
+          progressText.textContent = 'Unduhan selesai!';
+          
+          songTitle.textContent = data.songName;
+          songDetails.textContent = `Diunduh pada ${new Date().toLocaleTimeString()}`;
+          fileSize.textContent = data.fileSize.megabytes;
+          
+          downloadLink.href = 'http://localhost:3000' + data.directDownloadUrl;
+          downloadLink.download = data.fileName;
+          
+          resultArea.classList.remove('hidden');
+          setTimeout(() => downloadLink.click(), 500);
+        } else {
+          showError('Gagal mengunduh: ' + data.error);
+        }
+      } catch (error) {
+        showError('Terjadi kesalahan: ' + error.message);
+      } finally {
+        downloadBtn.disabled = false;
+        downloadBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+      }
+    });
+  </script>
+</body>
+</html>
