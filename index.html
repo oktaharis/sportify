@@ -1,178 +1,788 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Spotify Downloader Pribadi</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spotify Downloader</title>
   <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-gray-100 flex items-center justify-center min-h-screen py-6">
-  <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
-    <h1 class="text-2xl font-bold mb-4 text-center">Spotify Downloader Pribadi</h1>
-    
-    <div class="space-y-4">
-      <input
-        type="text"
-        id="spotifyUrl"
-        placeholder="Masukkan URL Spotify"
-        class="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-500"
-      >
-      <button
-        id="downloadBtn"
-        class="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600 transition"
-      >
-        Unduh
-      </button>
-    </div>
-    
-    <div id="status" class="mt-4 text-center text-gray-600"></div>
-    
-    <div id="progressArea" class="mt-4 hidden">
-      <div class="w-full bg-gray-200 rounded-full h-2.5">
-        <div id="progressBar" class="bg-blue-600 h-2.5 rounded-full w-0 transition-all duration-300"></div>
-      </div>
-      <p id="progressText" class="text-sm text-center mt-2 text-gray-500">Memulai unduhan...</p>
-    </div>
-    
-    <div id="resultArea" class="mt-6 hidden">
-      <div class="bg-gray-50 p-4 rounded-lg">
-        <h3 class="font-bold text-lg mb-2" id="songTitle">Musik</h3>
-        <p class="text-sm text-gray-500 mb-3" id="songDetails">Detail lagu</p>
-        <div class="flex justify-between items-center">
-          <span class="text-xs text-gray-500" id="fileSize">0 MB</span>
-          <a id="downloadLink" href="#" class="bg-green-500 text-white py-2 px-4 rounded hover:bg-green-600 transition flex items-center">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-            </svg>
-            Unduh MP3
-          </a>
-        </div>
-      </div>
-    </div>
-    
-    <div id="errorArea" class="mt-4 hidden">
-      <div class="bg-red-50 border-l-4 border-red-500 p-4">
-        <div class="flex">
-          <div class="flex-shrink-0">
-            <svg class="h-5 w-5 text-red-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
-            </svg>
-          </div>
-          <div class="ml-3">
-            <p id="errorText" class="text-sm text-red-700">Error message</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
   <script>
-    const downloadBtn = document.getElementById('downloadBtn');
-    const status = document.getElementById('status');
-    const progressArea = document.getElementById('progressArea');
-    const progressBar = document.getElementById('progressBar');
-    const progressText = document.getElementById('progressText');
-    const resultArea = document.getElementById('resultArea');
-    const songTitle = document.getElementById('songTitle');
-    const songDetails = document.getElementById('songDetails');
-    const fileSize = document.getElementById('fileSize');
-    const downloadLink = document.getElementById('downloadLink');
-    const errorArea = document.getElementById('errorArea');
-    const errorText = document.getElementById('errorText');
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            spotify: {
+              green: '#1DB954',
+              black: '#191414',
+              darkgray: '#121212',
+              lightgray: '#282828',
+              white: '#FFFFFF',
+            },
+          },
+          animation: {
+            'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+          }
+        },
+      },
+    }
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap');
     
-    function resetUI() {
-      status.textContent = '';
-      progressArea.classList.add('hidden');
-      resultArea.classList.add('hidden');
-      errorArea.classList.add('hidden');
-      progressBar.style.width = '0%';
-      progressText.textContent = 'Memulai unduhan...';
+    body {
+      font-family: 'Montserrat', sans-serif;
+      background-color: #121212;
+      background-image: 
+        radial-gradient(at 0% 0%, rgba(29, 185, 84, 0.1) 0px, transparent 50%),
+        radial-gradient(at 100% 0%, rgba(29, 185, 84, 0.1) 0px, transparent 50%);
+      background-attachment: fixed;
     }
     
-    function showError(message) {
-      errorText.textContent = message;
-      errorArea.classList.remove('hidden');
-      progressArea.classList.add('hidden');
+    .wave-animation {
+      position: relative;
+      height: 40px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      width: 40px;
     }
     
-    function parseSongInfo(commandOutput) {
-      try {
-        const match = commandOutput.match(/Downloaded "([^"]+)":/);
-        return match && match[1] ? match[1] : 'Lagu Spotify';
-      } catch {
-        return 'Lagu Spotify';
+    .wave-bar {
+      width: 4px;
+      background-color: #1DB954;
+      border-radius: 2px;
+      animation: wave 1.2s ease-in-out infinite;
+    }
+    
+    .wave-bar:nth-child(1) { height: 60%; animation-delay: 0s; }
+    .wave-bar:nth-child(2) { height: 30%; animation-delay: 0.2s; }
+    .wave-bar:nth-child(3) { height: 75%; animation-delay: 0.4s; }
+    .wave-bar:nth-child(4) { height: 50%; animation-delay: 0.6s; }
+    
+    @keyframes wave {
+      0%, 100% { transform: scaleY(1); }
+      50% { transform: scaleY(0.5); }
+    }
+    
+    .gradient-border {
+      position: relative;
+      border-radius: 0.5rem;
+      background: #282828;
+      padding: 0.25rem;
+    }
+    
+    .gradient-border::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      border-radius: 0.5rem;
+      padding: 2px;
+      background: linear-gradient(45deg, #1DB954, #191414);
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    
+    .gradient-border:hover::before {
+      opacity: 1;
+    }
+    
+    .progress-animation {
+      transition: width 0.5s ease;
+    }
+    
+    .card-hover {
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    
+    .card-hover:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 25px -5px rgba(29, 185, 84, 0.1);
+    }
+    
+    .floating {
+      animation: floating 3s ease-in-out infinite;
+    }
+    
+    @keyframes floating {
+      0% { transform: translateY(0px); }
+      50% { transform: translateY(-10px); }
+      100% { transform: translateY(0px); }
+    }
+    
+    .fade-in {
+      animation: fadeIn 0.5s ease-in;
+    }
+    
+    @keyframes fadeIn {
+      0% { opacity: 0; }
+      100% { opacity: 1; }
+    }
+    
+    /* Toast notification styles */
+    .toast-container {
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      z-index: 50;
+      max-width: 24rem;
+    }
+    
+    .toast {
+      margin-bottom: 0.75rem;
+      padding: 1rem;
+      border-radius: 0.5rem;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      display: flex;
+      align-items: center;
+      animation: slideIn 0.3s ease forwards;
+      max-width: 100%;
+    }
+    
+    .toast-success {
+      background-color: #1DB954;
+      color: white;
+    }
+    
+    .toast-error {
+      background-color: #e74c3c;
+      color: white;
+    }
+    
+    .toast-info {
+      background-color: #282828;
+      color: white;
+      border-left: 4px solid #1DB954;
+    }
+    
+    @keyframes slideIn {
+      from {
+        transform: translateX(100%);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
       }
     }
     
-    function simulateProgress() {
-      let progress = 0;
-      const interval = setInterval(() => {
-        if (progress >= 90) {
-          clearInterval(interval);
-          return;
-        }
-        
-        progress += Math.random() * 10;
-        progress = Math.min(progress, 90);
-        progressBar.style.width = `${progress}%`;
-        
-        progressText.textContent = progress < 30 ? 'Mengambil informasi lagu...' :
-          progress < 60 ? 'Mengunduh audio...' : 'Memproses file...';
-      }, 800);
-      return interval;
+    @keyframes slideOut {
+      from {
+        transform: translateX(0);
+        opacity: 1;
+      }
+      to {
+        transform: translateX(100%);
+        opacity: 0;
+      }
     }
     
-    downloadBtn.addEventListener('click', async () => {
-      const url = document.getElementById('spotifyUrl').value.trim();
-      
-      if (!url) return showError('Silakan masukkan URL Spotify');
-      if (!url.includes('spotify.com')) return showError('URL tidak valid');
-      
-      resetUI();
-      status.textContent = 'Memulai proses unduhan...';
-      progressArea.classList.remove('hidden');
-      
-      const progressInterval = simulateProgress();
-      downloadBtn.disabled = true;
-      downloadBtn.classList.add('opacity-50', 'cursor-not-allowed');
-      
-      try {
-        const response = await fetch('http://localhost:3000/api/download', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url })
-        });
+    .slide-out {
+      animation: slideOut 0.3s ease forwards;
+    }
+    
+    /* Fix for input field */
+    .input-container {
+      position: relative;
+      z-index: 10;
+    }
+    
+    .input-field {
+      width: 100%;
+      background-color: #282828;
+      color: white;
+      border: none;
+      border-radius: 0.5rem;
+      padding: 1rem;
+      font-size: 1rem;
+    }
+    
+    .input-field:focus {
+      outline: 2px solid #1DB954;
+    }
+  </style>
+</head>
+
+<body class="min-h-screen text-spotify-white">
+  <!-- Toast Container -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- Header -->
+  <header class="w-full py-6 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-7xl mx-auto flex justify-between items-center">
+      <div class="flex items-center space-x-2">
+        <svg class="w-8 h-8 text-spotify-green" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.65 14.65c-.2.2-.51.2-.71 0-1.79-1.77-4.39-2.15-6.79-1.44-.33.09-.66-.12-.75-.44-.09-.33.12-.66.44-.75 2.82-.82 5.82-.39 7.95 1.33.2.2.2.51 0 .71zm1.23-2.75c-.25.25-.65.25-.9 0-2.05-2.05-5.18-2.65-7.6-1.44-.29.14-.65.02-.79-.28-.14-.29-.02-.65.28-.79 2.77-1.35 6.26-.69 8.61 1.61.25.25.25.65 0 .9zm.11-2.78c-.24.24-.64.24-.88 0-2.39-2.39-6.26-2.91-9.24-1.6-.35.15-.77-.01-.92-.36-.15-.35.01-.77.36-.92 3.42-1.49 7.77-.92 10.57 1.88.24.24.24.64 0 .88z"/>
+        </svg>
+        <span class="text-xl font-bold">Spotify Downloader</span>
+      </div>
+      <div class="hidden sm:flex items-center space-x-4">
+        <a href="#" class="text-sm font-medium hover:text-spotify-green transition-colors">Beranda</a>
+        <a href="#" class="text-sm font-medium hover:text-spotify-green transition-colors">Tentang</a>
+        <a href="#" class="text-sm font-medium hover:text-spotify-green transition-colors">Bantuan</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="py-12 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-7xl mx-auto">
+      <div class="flex flex-col lg:flex-row items-center justify-between">
+        <div class="w-full lg:w-1/2 mb-10 lg:mb-0">
+          <h1 class="text-4xl sm:text-5xl font-bold mb-6 animate__animated animate__fadeInUp">
+            Unduh Musik <span class="text-spotify-green">Spotify</span> Favoritmu
+          </h1>
+          <p class="text-lg text-gray-300 mb-8 animate__animated animate__fadeInUp animate__delay-1s">
+            Simpan lagu dan playlist Spotify favoritmu dengan mudah dan cepat.
+          </p>
+          <div class="animate__animated animate__fadeInUp animate__delay-2s">
+            <!-- Fixed input container with proper z-index -->
+            <div class="input-container mb-6">
+              <input
+                type="text"
+                id="spotifyUrl"
+                placeholder="Masukkan URL Spotify (lagu atau playlist)"
+                class="input-field"
+              />
+            </div>
+            <button
+              id="downloadBtn"
+              class="w-full sm:w-auto bg-spotify-green hover:bg-opacity-80 text-white font-medium py-4 px-8 rounded-full transition-all transform hover:scale-105 flex items-center justify-center"
+            >
+              <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+              </svg>
+              Unduh Sekarang
+            </button>
+          </div>
+        </div>
+        <div class="w-full lg:w-1/2 flex justify-center">
+          <div class="relative w-64 h-64 sm:w-80 sm:h-80 floating">
+            <div class="absolute inset-0 bg-spotify-green rounded-full opacity-10 animate-pulse-slow"></div>
+            <div class="absolute inset-4 bg-spotify-black rounded-full flex items-center justify-center">
+              <svg class="w-32 h-32 sm:w-40 sm:h-40 text-spotify-green" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.65 14.65c-.2.2-.51.2-.71 0-1.79-1.77-4.39-2.15-6.79-1.44-.33.09-.66-.12-.75-.44-.09-.33.12-.66.44-.75 2.82-.82 5.82-.39 7.95 1.33.2.2.2.51 0 .71zm1.23-2.75c-.25.25-.65.25-.9 0-2.05-2.05-5.18-2.65-7.6-1.44-.29.14-.65.02-.79-.28-.14-.29-.02-.65.28-.79 2.77-1.35 6.26-.69 8.61 1.61.25.25.25.65 0 .9zm.11-2.78c-.24.24-.64.24-.88 0-2.39-2.39-6.26-2.91-9.24-1.6-.35.15-.77-.01-.92-.36-.15-.35.01-.77.36-.92 3.42-1.49 7.77-.92 10.57 1.88.24.24.24.64 0 .88z"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features Section -->
+  <section class="py-12 px-4 sm:px-6 lg:px-8 bg-spotify-darkgray bg-opacity-50">
+    <div class="max-w-7xl mx-auto">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div class="bg-spotify-lightgray p-6 rounded-lg card-hover">
+          <div class="w-12 h-12 bg-spotify-green bg-opacity-20 rounded-full flex items-center justify-center mb-4">
+            <svg class="w-6 h-6 text-spotify-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"></path>
+            </svg>
+          </div>
+          <h3 class="text-lg font-semibold mb-2">Unduh Lagu</h3>
+          <p class="text-gray-400 text-sm">Unduh lagu favorit dari Spotify dengan kualitas tinggi dalam format MP3.</p>
+        </div>
         
-        clearInterval(progressInterval);
+        <div class="bg-spotify-lightgray p-6 rounded-lg card-hover">
+          <div class="w-12 h-12 bg-spotify-green bg-opacity-20 rounded-full flex items-center justify-center mb-4">
+            <svg class="w-6 h-6 text-spotify-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"></path>
+            </svg>
+          </div>
+          <h3 class="text-lg font-semibold mb-2">Unduh Playlist</h3>
+          <p class="text-gray-400 text-sm">Unduh seluruh playlist Spotify sekaligus dengan satu klik.</p>
+        </div>
         
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || `Server error: ${response.status}`);
+        <div class="bg-spotify-lightgray p-6 rounded-lg card-hover">
+          <div class="w-12 h-12 bg-spotify-green bg-opacity-20 rounded-full flex items-center justify-center mb-4">
+            <svg class="w-6 h-6 text-spotify-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+            </svg>
+          </div>
+          <h3 class="text-lg font-semibold mb-2">Cepat & Mudah</h3>
+          <p class="text-gray-400 text-sm">Proses unduhan yang cepat dan antarmuka yang mudah digunakan.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Main Content -->
+  <main class="py-12 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-3xl mx-auto">
+      <!-- Status Area -->
+      <div id="status" class="text-center text-gray-400 mb-4 h-6"></div>
+
+      <!-- Progress Area -->
+      <div id="progressArea" class="mb-8 hidden fade-in">
+        <div class="bg-spotify-lightgray p-6 rounded-lg">
+          <div class="flex items-center mb-4">
+            <div class="wave-animation mr-3">
+              <div class="wave-bar"></div>
+              <div class="wave-bar"></div>
+              <div class="wave-bar"></div>
+              <div class="wave-bar"></div>
+            </div>
+            <h3 class="text-lg font-medium" id="progressTitle">Memproses...</h3>
+          </div>
+          
+          <div class="w-full bg-gray-700 rounded-full h-2.5 mb-3">
+            <div id="progressBar" class="bg-spotify-green h-2.5 rounded-full w-0 progress-animation"></div>
+          </div>
+          
+          <div class="flex justify-between items-center text-sm">
+            <p id="progressText" class="text-gray-400">Memulai unduhan...</p>
+            <p id="progressPercentage" class="text-spotify-green font-medium">0%</p>
+          </div>
+          
+          <p id="songProgress" class="text-xs text-center mt-3 text-gray-500 hidden"></p>
+        </div>
+      </div>
+
+      <!-- Result Area for Single Song -->
+      <div id="resultArea" class="mb-8 hidden fade-in">
+        <div class="bg-spotify-lightgray p-6 rounded-lg">
+          <div class="flex items-center mb-4">
+            <div class="w-12 h-12 bg-spotify-green rounded-md flex items-center justify-center mr-4">
+              <svg class="w-6 h-6 text-spotify-black" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"></path>
+              </svg>
+            </div>
+            <div>
+              <h3 class="font-bold text-lg" id="songTitle">Musik</h3>
+              <p class="text-sm text-gray-400" id="songDetails">Detail lagu</p>
+            </div>
+          </div>
+          
+          <div class="flex justify-between items-center">
+            <span class="text-xs text-gray-400" id="fileSize">0 MB</span>
+            <a
+              id="downloadLink"
+              href="#"
+              class="bg-spotify-green text-white py-2 px-4 rounded-full hover:bg-opacity-80 transition flex items-center"
+            >
+              <svg class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+              </svg>
+              Unduh MP3
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Playlist Result Area -->
+      <div id="playlistResultArea" class="mb-8 hidden fade-in">
+        <div class="bg-spotify-lightgray p-6 rounded-lg">
+          <div class="flex items-center mb-4">
+            <div class="w-12 h-12 bg-spotify-green rounded-md flex items-center justify-center mr-4">
+              <svg class="w-6 h-6 text-spotify-black" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z"></path>
+              </svg>
+            </div>
+            <div>
+              <h3 class="font-bold text-lg" id="playlistTitle">Playlist</h3>
+              <p class="text-sm text-gray-400" id="playlistDetails">Detail playlist</p>
+            </div>
+          </div>
+
+          <div class="mb-4 flex justify-between items-center">
+            <span class="text-xs text-gray-400" id="playlistSize">0 MB</span>
+            <a
+              id="downloadPlaylistLink"
+              href="#"
+              class="bg-spotify-green text-white py-2 px-4 rounded-full hover:bg-opacity-80 transition flex items-center"
+            >
+              <svg class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+              </svg>
+              Unduh Semua (ZIP)
+            </a>
+          </div>
+
+          <div id="playlistSongs" class="max-h-60 overflow-y-auto rounded-lg bg-spotify-black">
+            <!-- Songs will be added here dynamically -->
+            <div class="p-4 text-center text-gray-500 text-sm">
+              Memuat daftar lagu...
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Error Area -->
+      <div id="errorArea" class="mb-8 hidden fade-in">
+        <div class="bg-red-900 bg-opacity-30 border-l-4 border-red-500 p-4 rounded-r">
+          <div class="flex">
+            <div class="flex-shrink-0">
+              <svg class="h-5 w-5 text-red-500" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
+              </svg>
+            </div>
+            <div class="ml-3">
+              <p id="errorText" class="text-sm text-red-400">Error message</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="py-8 px-4 sm:px-6 lg:px-8 bg-spotify-black">
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center">
+      <div class="flex items-center mb-4 md:mb-0">
+        <svg class="w-6 h-6 text-spotify-green mr-2" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.65 14.65c-.2.2-.51.2-.71 0-1.79-1.77-4.39-2.15-6.79-1.44-.33.09-.66-.12-.75-.44-.09-.33.12-.66.44-.75 2.82-.82 5.82-.39 7.95 1.33.2.2.2.51 0 .71zm1.23-2.75c-.25.25-.65.25-.9 0-2.05-2.05-5.18-2.65-7.6-1.44-.29.14-.65.02-.79-.28-.14-.29-.02-.65.28-.79 2.77-1.35 6.26-.69 8.61 1.61.25.25.25.65 0 .9zm.11-2.78c-.24.24-.64.24-.88 0-2.39-2.39-6.26-2.91-9.24-1.6-.35.15-.77-.01-.92-.36-.15-.35.01-.77.36-.92 3.42-1.49 7.77-.92 10.57 1.88.24.24.24.64 0 .88z"/>
+        </svg>
+        <span class="text-sm font-medium">© 2025 Spotify Downloader</span>
+      </div>
+      <div class="flex space-x-6">
+        <a href="#" class="text-gray-400 hover:text-spotify-green transition-colors">
+          <span class="sr-only">Twitter</span>
+          <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M8.29 20.251c7.547 0 11.675-6.253 11.675-11.675 0-.178 0-.355-.012-.53A8.348 8.348 0 0022 5.92a8.19 8.19 0 01-2.357.646 4.118 4.118 0 001.804-2.27 8.224 8.224 0 01-2.605.996 4.107 4.107 0 00-6.993 3.743 11.65 11.65 0 01-8.457-4.287 4.106 4.106 0 001.27 5.477A4.072 4.072 0 012.8 9.713v.052a4.105 4.105 0 003.292 4.022 4.095 4.095 0 01-1.853.07 4.108 4.108 0 003.834 2.85A8.233 8.233 0 012 18.407a11.616 11.616 0 006.29 1.84"></path>
+          </svg>
+        </a>
+        <a href="#" class="text-gray-400 hover:text-spotify-green transition-colors">
+          <span class="sr-only">GitHub</span>
+          <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
+            <path fill-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" clip-rule="evenodd"></path>
+          </svg>
+        </a>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    const API_BASE_URL = "http://localhost:3000";
+    const downloadBtn = document.getElementById("downloadBtn");
+    const status = document.getElementById("status");
+    const progressArea = document.getElementById("progressArea");
+    const progressBar = document.getElementById("progressBar");
+    const progressText = document.getElementById("progressText");
+    const progressTitle = document.getElementById("progressTitle");
+    const progressPercentage = document.getElementById("progressPercentage");
+    const songProgress = document.getElementById("songProgress");
+    const resultArea = document.getElementById("resultArea");
+    const songTitle = document.getElementById("songTitle");
+    const songDetails = document.getElementById("songDetails");
+    const fileSize = document.getElementById("fileSize");
+    const downloadLink = document.getElementById("downloadLink");
+    const playlistResultArea = document.getElementById("playlistResultArea");
+    const playlistTitle = document.getElementById("playlistTitle");
+    const playlistDetails = document.getElementById("playlistDetails");
+    const playlistSize = document.getElementById("playlistSize");
+    const downloadPlaylistLink = document.getElementById("downloadPlaylistLink");
+    const playlistSongs = document.getElementById("playlistSongs");
+    const errorArea = document.getElementById("errorArea");
+    const errorText = document.getElementById("errorText");
+    const toastContainer = document.getElementById("toastContainer");
+
+    let activeDownloadId = null;
+    let statusCheckInterval = null;
+
+    // Toast notification system
+    function showToast(message, type = 'info', duration = 5000) {
+      const toast = document.createElement('div');
+      toast.className = `toast toast-${type}`;
+      
+      let icon = '';
+      if (type === 'success') {
+        icon = '<svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>';
+      } else if (type === 'error') {
+        icon = '<svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path></svg>';
+      } else {
+        icon = '<svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2h-1V9a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>';
+      }
+      
+      toast.innerHTML = `
+        <div class="flex items-center">
+          ${icon}
+          <span>${message}</span>
+        </div>
+        <button class="ml-auto pl-2" onclick="this.parentElement.classList.add('slide-out'); setTimeout(() => this.parentElement.remove(), 300);">
+          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+          </svg>
+        </button>
+      `;
+      
+      toastContainer.appendChild(toast);
+      
+      // Auto remove after duration
+      setTimeout(() => {
+        if (toast.parentElement) {
+          toast.classList.add('slide-out');
+          setTimeout(() => toast.remove(), 300);
         }
-        
+      }, duration);
+    }
+
+    function resetUI() {
+      status.textContent = "";
+      progressArea.classList.add("hidden");
+      resultArea.classList.add("hidden");
+      playlistResultArea.classList.add("hidden");
+      errorArea.classList.add("hidden");
+      songProgress.classList.add("hidden");
+      progressBar.style.width = "0%";
+      progressText.textContent = "Memulai unduhan...";
+      progressPercentage.textContent = "0%";
+
+      // Clear any active intervals
+      if (statusCheckInterval) {
+        clearInterval(statusCheckInterval);
+        statusCheckInterval = null;
+      }
+    }
+
+    function showError(message) {
+      // Show error in toast instead of error area
+      showToast(message, 'error');
+      progressArea.classList.add("hidden");
+    }
+
+    function updateProgress(progress, statusText, songInfo = null) {
+      progressBar.style.width = `${progress}%`;
+      progressPercentage.textContent = `${Math.round(progress)}%`;
+      progressText.textContent = statusText;
+
+      if (songInfo) {
+        songProgress.textContent = songInfo;
+        songProgress.classList.remove("hidden");
+      } else {
+        songProgress.classList.add("hidden");
+      }
+    }
+
+    async function checkDownloadStatus(downloadId) {
+      try {
+        const response = await fetch(
+          `${API_BASE_URL}/api/download-status/${downloadId}`
+        );
+        if (!response.ok) throw new Error("Gagal mendapatkan status");
+
         const data = await response.json();
-        
+
         if (data.success) {
-          progressBar.style.width = '100%';
-          progressText.textContent = 'Unduhan selesai!';
-          
-          songTitle.textContent = data.songName;
-          songDetails.textContent = `Diunduh pada ${new Date().toLocaleTimeString()}`;
-          fileSize.textContent = data.fileSize.megabytes;
-          
-          downloadLink.href = 'http://localhost:3000' + data.directDownloadUrl;
-          downloadLink.download = data.fileName;
-          
-          resultArea.classList.remove('hidden');
-          setTimeout(() => downloadLink.click(), 500);
-        } else {
-          showError('Gagal mengunduh: ' + data.error);
+          // Update progress UI
+          const statusMap = {
+            preparing: "Mempersiapkan unduhan...",
+            downloading: "Mengunduh audio...",
+            converting: "Mengkonversi audio...",
+            finalizing: "Menyelesaikan unduhan...",
+            complete: "Unduhan selesai!",
+            error: "Terjadi kesalahan",
+          };
+
+          let statusText = statusMap[data.status] || "Memproses...";
+          let songInfo = null;
+
+          if (data.isPlaylist) {
+            if (data.totalItems > 0) {
+              songInfo = `${data.completedItems}/${
+                data.totalItems
+              } lagu (${Math.round(data.progress)}%)`;
+
+              if (data.currentItem) {
+                statusText = `Mengunduh: ${data.currentItem}`;
+                progressTitle.textContent = "Mengunduh Playlist";
+              }
+            }
+          } else {
+            progressTitle.textContent = "Mengunduh Lagu";
+          }
+
+          updateProgress(data.progress, statusText, songInfo);
+
+          // Handle completed downloads
+          if (data.status === "complete") {
+            if (data.isPlaylist) {
+              // Handle completed playlist
+              if (data.downloadUrl) {
+                displayPlaylistResult(data);
+                clearInterval(statusCheckInterval);
+                showToast('Playlist berhasil diunduh!', 'success');
+              }
+            } else {
+              // Handle completed single song
+              if (data.directDownloadUrl) {
+                displaySongResult(data);
+                clearInterval(statusCheckInterval);
+                showToast('Lagu berhasil diunduh!', 'success');
+              }
+            }
+          } else if (data.status === "error") {
+            showError("Terjadi kesalahan saat mengunduh");
+            clearInterval(statusCheckInterval);
+          }
         }
       } catch (error) {
-        showError('Terjadi kesalahan: ' + error.message);
+        console.error("Error checking status:", error);
+      }
+    }
+
+    function displaySongResult(data) {
+      songTitle.textContent = data.songName || "Lagu Spotify";
+      songDetails.textContent = `Diunduh pada ${new Date().toLocaleTimeString()}`;
+      fileSize.textContent = data.fileSize?.megabytes || "Unduhan selesai";
+
+      downloadLink.href = `${API_BASE_URL}${data.directDownloadUrl}`;
+      downloadLink.onclick = async function (e) {
+        e.preventDefault();
+
+        try {
+          const response = await fetch(
+            `${API_BASE_URL}${data.directDownloadUrl}`
+          );
+
+          if (response.status === 202) {
+            const statusData = await response.json();
+            showToast(`Unduhan masih dalam proses (${statusData.progress}%). Mohon tunggu sebentar.`, 'info');
+            return;
+          }
+
+          if (!response.ok) {
+            throw new Error("Gagal mengunduh file");
+          }
+
+          const blob = await response.blob();
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.style.display = "none";
+          a.href = url;
+          a.download = data.songName || "spotify-download.mp3";
+          document.body.appendChild(a);
+          a.click();
+          window.URL.revokeObjectURL(url);
+          document.body.removeChild(a);
+          showToast('Mengunduh lagu...', 'success');
+        } catch (error) {
+          console.error("Download error:", error);
+          showToast('Terjadi kesalahan saat mengunduh file.', 'error');
+        }
+      };
+
+      resultArea.classList.remove("hidden");
+    }
+
+    function displayPlaylistResult(data) {
+      playlistTitle.textContent = data.currentItem || "Playlist Spotify";
+      playlistDetails.textContent = `${
+        data.totalFiles || 0
+      } lagu • Diunduh pada ${new Date().toLocaleTimeString()}`;
+      playlistSize.textContent = data.fileSize?.megabytes || "Unduhan selesai";
+
+      downloadPlaylistLink.href = `${API_BASE_URL}${data.downloadUrl}`;
+      downloadPlaylistLink.onclick = function(e) {
+        showToast('Mengunduh playlist...', 'success');
+      };
+
+      // Fetch playlist songs
+      fetchPlaylistSongs(data.playlistPath);
+
+      playlistResultArea.classList.remove("hidden");
+    }
+
+    async function fetchPlaylistSongs(playlistId) {
+      try {
+        const response = await fetch(
+          `${API_BASE_URL}/api/playlist-files/${playlistId}`
+        );
+        if (!response.ok) throw new Error("Gagal mendapatkan daftar lagu");
+
+        const data = await response.json();
+
+        if (data.success && data.files.length > 0) {
+          playlistSongs.innerHTML = "";
+
+          data.files.forEach((file, index) => {
+            const songElement = document.createElement("div");
+            songElement.className = `p-4 ${
+              index % 2 === 0 ? "bg-spotify-black" : "bg-spotify-lightgray"
+            } border-b border-gray-800 flex justify-between items-center`;
+
+            songElement.innerHTML = `
+              <div>
+                <p class="font-medium text-sm">${file.songName}</p>
+                <p class="text-xs text-gray-500">${file.fileSize?.megabytes || ""}</p>
+              </div>
+              <a href="${API_BASE_URL}${file.downloadUrl}" class="text-spotify-green hover:text-white transition-colors" download>
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+              </a>
+            `;
+
+            songElement.querySelector('a').onclick = function() {
+              showToast(`Mengunduh: ${file.songName}`, 'success');
+            };
+
+            playlistSongs.appendChild(songElement);
+          });
+        } else {
+          playlistSongs.innerHTML =
+            '<div class="p-4 text-center text-gray-500 text-sm">Tidak ada lagu yang ditemukan</div>';
+        }
+      } catch (error) {
+        console.error("Error fetching playlist songs:", error);
+        playlistSongs.innerHTML =
+          '<div class="p-4 text-center text-red-500 text-sm">Gagal memuat daftar lagu</div>';
+      }
+    }
+
+    downloadBtn.addEventListener("click", async () => {
+      const url = document.getElementById("spotifyUrl").value.trim();
+
+      if (!url) return showToast("Silakan masukkan URL Spotify", "error");
+      if (!url.includes("spotify.com")) return showToast("URL tidak valid", "error");
+
+      resetUI();
+      status.textContent = "Memulai proses unduhan...";
+      progressArea.classList.remove("hidden");
+      showToast("Memulai proses unduhan...", "info");
+
+      downloadBtn.disabled = true;
+      downloadBtn.classList.add("opacity-50", "cursor-not-allowed");
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/download`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(
+            errorData.error || `Server error: ${response.status}`
+          );
+        }
+
+        const data = await response.json();
+
+        if (data.success) {
+          activeDownloadId = data.downloadId;
+
+          // Start checking status
+          statusCheckInterval = setInterval(() => {
+            checkDownloadStatus(activeDownloadId);
+          }, 1000);
+
+          // Start with initial check
+          checkDownloadStatus(activeDownloadId);
+        } else {
+          showToast("Gagal memulai unduhan: " + data.error, "error");
+        }
+      } catch (error) {
+        showToast("Terjadi kesalahan: " + error.message, "error");
       } finally {
         downloadBtn.disabled = false;
-        downloadBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        downloadBtn.classList.remove("opacity-50", "cursor-not-allowed");
       }
     });
   </script>
