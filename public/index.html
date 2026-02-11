@@ -458,7 +458,7 @@
   </footer>
 
   <script>
-    const API_BASE_URL = window.location.origin;
+    const API_BASE_URL = 'http://localhost:3002';
     const downloadBtn = document.getElementById("downloadBtn");
     const status = document.getElementById("status");
     const progressArea = document.getElementById("progressArea");
@@ -484,6 +484,8 @@
 
     let activeDownloadId = null;
     let statusCheckInterval = null;
+    let pollStartTime = null;
+    const MAX_POLL_DURATION = 5 * 60 * 1000; // 5 minutes max polling time
 
     // Toast notification system
     function showToast(message, type = 'info', duration = 5000) {
@@ -538,6 +540,10 @@
         clearInterval(statusCheckInterval);
         statusCheckInterval = null;
       }
+      
+      // Reset poll timer
+      pollStartTime = null;
+      activeDownloadId = null;
     }
 
     function showError(message) {
@@ -561,9 +567,35 @@
 
     async function checkDownloadStatus(downloadId) {
       try {
+        // Initialize poll start time if not set
+        if (!pollStartTime) {
+          pollStartTime = Date.now();
+        }
+
+        // Check if we've exceeded the maximum polling duration
+        if (Date.now() - pollStartTime > MAX_POLL_DURATION) {
+          clearInterval(statusCheckInterval);
+          statusCheckInterval = null;
+          activeDownloadId = null;
+          pollStartTime = null;
+          showError("Waktu unduhan habis. Silakan coba lagi.");
+          return;
+        }
+
         const response = await fetch(
           `${API_BASE_URL}/api/download-status/${downloadId}`
         );
+
+        // Handle 404 - download not found
+        if (response.status === 404) {
+          clearInterval(statusCheckInterval);
+          statusCheckInterval = null;
+          activeDownloadId = null;
+          pollStartTime = null;
+          showError("Download tidak ditemukan. Silakan coba lagi.");
+          return;
+        }
+
         if (!response.ok) throw new Error("Gagal mendapatkan status");
 
         const data = await response.json();
@@ -606,6 +638,9 @@
               if (data.downloadUrl) {
                 displayPlaylistResult(data);
                 clearInterval(statusCheckInterval);
+                statusCheckInterval = null;
+                activeDownloadId = null;
+                pollStartTime = null;
                 showToast('Playlist berhasil diunduh!', 'success');
               }
             } else {
@@ -613,16 +648,28 @@
               if (data.directDownloadUrl) {
                 displaySongResult(data);
                 clearInterval(statusCheckInterval);
+                statusCheckInterval = null;
+                activeDownloadId = null;
+                pollStartTime = null;
                 showToast('Lagu berhasil diunduh!', 'success');
               }
             }
           } else if (data.status === "error") {
             showError("Terjadi kesalahan saat mengunduh");
             clearInterval(statusCheckInterval);
+            statusCheckInterval = null;
+            activeDownloadId = null;
+            pollStartTime = null;
           }
         }
       } catch (error) {
         console.error("Error checking status:", error);
+        // Clear interval on any error to prevent infinite loops
+        clearInterval(statusCheckInterval);
+        statusCheckInterval = null;
+        activeDownloadId = null;
+        pollStartTime = null;
+        showError("Terjadi kesalahan koneksi. Silakan coba lagi.");
       }
     }
 
@@ -767,6 +814,7 @@
 
         if (data.success) {
           activeDownloadId = data.downloadId;
+          pollStartTime = null; // Reset poll start time
 
           // Start checking status
           statusCheckInterval = setInterval(() => {
