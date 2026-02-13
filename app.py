@@ -229,19 +229,20 @@ def get_actual_filename(temp_file_name: str) -> dict | None:
         files = list(OUTPUT_DIR.iterdir())
         print(f"[File Search] Files in output directory: {[f.name for f in files]}")
 
-        matched = [
-            f for f in files
-            if f.name.startswith(temp_file_name) and f.suffix in (".mp3", ".webm", ".m4a")
-        ]
-        if matched:
-            return {"full_path": str(matched[0]), "filename": matched[0].name, "is_audio": True}
-
+        # Cek apakah ini folder playlist
         possible_dir = OUTPUT_DIR / temp_file_name
         if possible_dir.exists() and possible_dir.is_dir():
             dir_files = [f for f in possible_dir.iterdir() if f.suffix == ".mp3"]
             if dir_files:
+                # Cek apakah ini playlist atau single song dalam directory
                 info = active_downloads.get(temp_file_name, {})
-                if not info.get("is_playlist"):
+                if info.get("is_playlist"):
+                    return {
+                        "directory_path": str(possible_dir),
+                        "files": [{"full_path": str(f), "filename": f.name} for f in dir_files],
+                        "is_playlist": True,
+                    }
+                else:
                     return {
                         "full_path": str(dir_files[0]),
                         "filename": dir_files[0].name,
@@ -249,11 +250,15 @@ def get_actual_filename(temp_file_name: str) -> dict | None:
                         "in_directory": True,
                         "directory_path": str(possible_dir),
                     }
-                return {
-                    "directory_path": str(possible_dir),
-                    "files": [{"full_path": str(f), "filename": f.name} for f in dir_files],
-                    "is_playlist": True,
-                }
+
+        # Cek file langsung (single song)
+        matched = [
+            f for f in files
+            if f.name.startswith(temp_file_name) and f.suffix in (".mp3", ".webm", ".m4a")
+        ]
+        if matched:
+            return {"full_path": str(matched[0]), "filename": matched[0].name, "is_audio": True}
+
     except Exception as err:
         print(f"[File Search] Error: {err}")
 
@@ -262,7 +267,7 @@ def get_actual_filename(temp_file_name: str) -> dict | None:
 
 
 # ---------------------------------------------------------------------------
-# yt-dlp worker — single track (DIMODIFIKASI)
+# yt-dlp worker — single track
 # ---------------------------------------------------------------------------
 def download_single(download_id: str, query: str, output_template: str):
     print(f"[Single Track] Starting: {download_id}")
@@ -285,7 +290,7 @@ def download_single(download_id: str, query: str, output_template: str):
 
     args = [
         "yt-dlp",
-        target_url,  # Gunakan URL yang telah ditentukan
+        target_url,
         "--extract-audio",
         "--audio-format", "mp3",
         "--audio-quality", "0",
@@ -293,7 +298,7 @@ def download_single(download_id: str, query: str, output_template: str):
         "--output", output_template,
         "--no-warnings",
         "--progress",
-        "--force-overwrites",  # Tambahkan untuk memastikan file ditimpa jika sudah ada
+        "--force-overwrites",
     ]
 
     try:
@@ -341,7 +346,7 @@ def download_single(download_id: str, query: str, output_template: str):
 
 
 # ---------------------------------------------------------------------------
-# yt-dlp worker — playlist (DIMODIFIKASI)
+# yt-dlp worker — playlist
 # ---------------------------------------------------------------------------
 def download_playlist_worker(download_id: str, tracks: list[dict], output_dir: str):
     print(f"[Playlist Worker] Starting: {download_id}, {len(tracks)} tracks")
@@ -409,7 +414,7 @@ def download_playlist_worker(download_id: str, tracks: list[dict], output_dir: s
 
 
 # ---------------------------------------------------------------------------
-# POST /api/download (TIDAK PERLU DIMODIFIKASI)
+# POST /api/download
 # ---------------------------------------------------------------------------
 @app.route("/api/download", methods=["POST"])
 def download():
@@ -446,9 +451,6 @@ def download():
             active_downloads[download_id]["current_item"] = track_info["title"]
             print(f"[Download API] oEmbed OK → {query!r}")
         else:
-            # Last resort fallback: coba extract dari URL path
-            # Format Spotify URL: /track/ID
-            # Tidak ada info judul, tapi kita tetap coba
             query = "spotify song"
             active_downloads[download_id]["current_item"] = "Unknown Track"
             print(f"[Download API] oEmbed FAILED, cannot determine song title")
@@ -511,41 +513,84 @@ def download_status(download_id: str):
 
     if info["status"] == "complete":
         if info["is_playlist"]:
-            file_info = get_actual_filename(download_id)
-            if file_info and file_info.get("is_playlist"):
-                total_size = sum(
-                    Path(f["full_path"]).stat().st_size
-                    for f in file_info["files"]
-                    if Path(f["full_path"]).exists()
-                )
-                return jsonify({
-                    "success": True, **info,
+            # Untuk playlist, langsung cek apakah folder exists
+            playlist_dir = OUTPUT_DIR / download_id
+            
+            print(f"[Status Check] Checking playlist dir: {playlist_dir}")
+            print(f"[Status Check] Dir exists: {playlist_dir.exists()}")
+            print(f"[Status Check] Is dir: {playlist_dir.is_dir()}")
+            
+            if playlist_dir.exists() and playlist_dir.is_dir():
+                # Hitung semua file MP3 di folder
+                mp3_files = list(playlist_dir.glob("*.mp3"))
+                total_size = sum(f.stat().st_size for f in mp3_files if f.exists())
+                
+                response_data = {
+                    "success": True,
+                    "status": info["status"],
+                    "progress": info["progress"],
+                    "isPlaylist": info["is_playlist"],
+                    "totalItems": info.get("total_items", 0),
+                    "completedItems": info.get("completed_items", 0),
+                    "currentItem": info.get("current_item", ""),
                     "playlistPath": download_id,
-                    "totalFiles": len(file_info["files"]),
+                    "totalFiles": len(mp3_files),
                     "fileSize": {
                         "bytes": total_size,
                         "megabytes": f"{total_size / (1024 * 1024):.2f} MB",
                     },
                     "downloadUrl": f"/api/download-playlist/{download_id}",
+                }
+                
+                print(f"[Status Response] Sending response: {response_data}")
+                return jsonify(response_data)
+            else:
+                print(f"[Status] ERROR: Playlist directory not found or not a dir")
+                return jsonify({
+                    "success": False,
+                    "error": "Playlist directory not found",
+                    **info
                 })
         else:
+            # Untuk single song
             file_info = get_actual_filename(download_id)
+            
+            print(f"[Status Check] File info: {file_info}")
+            
             if file_info and (file_info.get("is_audio") or file_info.get("in_directory")):
                 try:
                     size = Path(file_info["full_path"]).stat().st_size
-                    return jsonify({
-                        "success": True, **info,
-                        "fileName":  file_info["filename"],
-                        "songName":  Path(file_info["filename"]).stem,
+                    response_data = {
+                        "success": True,
+                        "status": info["status"],
+                        "progress": info["progress"],
+                        "isPlaylist": info["is_playlist"],
+                        "fileName": file_info["filename"],
+                        "songName": Path(file_info["filename"]).stem,
                         "fileSize": {
                             "bytes": size,
                             "megabytes": f"{size / (1024 * 1024):.2f} MB",
                         },
                         "directDownloadUrl": f"/api/direct-download/{download_id}",
-                    })
+                    }
+                    print(f"[Status Response] Sending response: {response_data}")
+                    return jsonify(response_data)
                 except Exception as e:
-                    print(f"[Status] File info error: {e}")
+                    print(f"[Status] ERROR: File info error: {e}")
+                    return jsonify({
+                        "success": False,
+                        "error": f"File error: {e}",
+                        **info
+                    })
+            else:
+                print(f"[Status] ERROR: File not found for: {download_id}")
+                return jsonify({
+                    "success": False,
+                    "error": "File not found",
+                    **info
+                })
 
+    # Return in-progress status
     return jsonify({"success": True, **info})
 
 
@@ -631,30 +676,57 @@ def download_playlist_zip(playlist_id: str):
 
 
 # ---------------------------------------------------------------------------
-# GET /api/playlist-files/<playlistId>
+# GET /api/playlist-files/<playlistId> - FIXED!
 # ---------------------------------------------------------------------------
 @app.route("/api/playlist-files/<playlist_id>", methods=["GET"])
 def playlist_files(playlist_id: str):
+    """Get list of files in a playlist directory."""
+    print(f"[Playlist Files] Request for playlist: {playlist_id}")
+    
     playlist_dir = OUTPUT_DIR / playlist_id
+    
+    print(f"[Playlist Files] Checking directory: {playlist_dir}")
+    print(f"[Playlist Files] Directory exists: {playlist_dir.exists()}")
+    print(f"[Playlist Files] Is directory: {playlist_dir.is_dir()}")
+    
     if not playlist_dir.exists() or not playlist_dir.is_dir():
+        print(f"[Playlist Files] ERROR: Directory not found or not a directory")
         return jsonify({"success": False, "error": "Playlist tidak ditemukan"}), 404
 
     try:
         files = []
-        for f in sorted(playlist_dir.iterdir()):
+        all_files = list(playlist_dir.iterdir())
+        print(f"[Playlist Files] Found {len(all_files)} total files")
+        
+        for f in sorted(all_files):
             if f.suffix != ".mp3":
+                print(f"[Playlist Files] Skipping non-MP3 file: {f.name}")
                 continue
-            size = f.stat().st_size
-            files.append({
-                "fileName": f.name,
-                "songName": f.stem,
-                "fileSize": {
-                    "bytes": size,
-                    "megabytes": f"{size / (1024 * 1024):.2f} MB",
-                },
-                "downloadUrl": f"/api/playlist-file/{playlist_id}/{f.name}",
-            })
-    except Exception:
+            
+            try:
+                size = f.stat().st_size
+                file_data = {
+                    "fileName": f.name,
+                    "songName": f.stem,
+                    "fileSize": {
+                        "bytes": size,
+                        "megabytes": f"{size / (1024 * 1024):.2f} MB",
+                    },
+                    "downloadUrl": f"/api/playlist-file/{playlist_id}/{f.name}",
+                }
+                files.append(file_data)
+                print(f"[Playlist Files] Added file: {f.name} ({size} bytes)")
+            except Exception as file_err:
+                print(f"[Playlist Files] Error processing file {f.name}: {file_err}")
+                continue
+        
+        print(f"[Playlist Files] Returning {len(files)} MP3 files")
+        return jsonify({"success": True, "files": files})
+        
+    except Exception as e:
+        print(f"[Playlist Files] ERROR: {type(e).__name__}: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"success": False, "error": "Terjadi kesalahan server"}), 500
 
 
@@ -663,10 +735,28 @@ def playlist_files(playlist_id: str):
 # ---------------------------------------------------------------------------
 @app.route("/api/playlist-file/<playlist_id>/<file_name>", methods=["GET"])
 def playlist_file(playlist_id: str, file_name: str):
+    """Download a single file from a playlist."""
+    print(f"[Playlist File] Request for: {playlist_id}/{file_name}")
+    
     file_path = OUTPUT_DIR / playlist_id / file_name
+    
+    print(f"[Playlist File] Checking path: {file_path}")
+    print(f"[Playlist File] File exists: {file_path.exists()}")
+    
     if not file_path.exists():
+        print(f"[Playlist File] ERROR: File not found")
         return jsonify({"success": False, "error": "File tidak ditemukan"}), 404
-    return send_file(str(file_path), mimetype="audio/mpeg", as_attachment=True, download_name=file_name)
+    
+    try:
+        return send_file(
+            str(file_path),
+            mimetype="audio/mpeg",
+            as_attachment=True,
+            download_name=file_name
+        )
+    except Exception as e:
+        print(f"[Playlist File] ERROR: {type(e).__name__}: {e}")
+        return jsonify({"success": False, "error": "Gagal mengirim file"}), 500
 
 
 # ---------------------------------------------------------------------------

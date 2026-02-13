@@ -458,7 +458,7 @@
   </footer>
 
   <script>
-    const API_BASE_URL = 'https://sportify.spacelix.qzz.io';
+    const API_BASE_URL = window.location.origin;
     const downloadBtn = document.getElementById("downloadBtn");
     const status = document.getElementById("status");
     const progressArea = document.getElementById("progressArea");
@@ -578,6 +578,7 @@
           statusCheckInterval = null;
           activeDownloadId = null;
           pollStartTime = null;
+          progressArea.classList.add("hidden");
           showError("Waktu unduhan habis. Silakan coba lagi.");
           return;
         }
@@ -592,6 +593,7 @@
           statusCheckInterval = null;
           activeDownloadId = null;
           pollStartTime = null;
+          progressArea.classList.add("hidden");
           showError("Download tidak ditemukan. Silakan coba lagi.");
           return;
         }
@@ -599,6 +601,9 @@
         if (!response.ok) throw new Error("Gagal mendapatkan status");
 
         const data = await response.json();
+
+        // TAMBAHKAN DEBUG LOG
+        console.log('Response data:', data);
 
         if (data.success) {
           // Update progress UI
@@ -633,33 +638,52 @@
 
           // Handle completed downloads
           if (data.status === "complete") {
+            console.log('Download complete detected!');
+
+            // STOP POLLING FIRST - PALING PENTING!
+            if (statusCheckInterval) {
+              clearInterval(statusCheckInterval);
+              statusCheckInterval = null;
+            }
+            activeDownloadId = null;
+            pollStartTime = null;
+
+            // HIDE PROGRESS AREA (small delay for UX)
+            setTimeout(() => {
+              progressArea.classList.add("hidden");
+              status.textContent = "";
+            }, 500);
+
+            // Handle result display
             if (data.isPlaylist) {
-              // Handle completed playlist
+              console.log('Playlist download URL:', data.downloadUrl);
               if (data.downloadUrl) {
                 displayPlaylistResult(data);
-                clearInterval(statusCheckInterval);
-                statusCheckInterval = null;
-                activeDownloadId = null;
-                pollStartTime = null;
                 showToast('Playlist berhasil diunduh!', 'success');
+              } else {
+                console.error('No downloadUrl in response!');
+                showError("URL download playlist tidak ditemukan");
               }
             } else {
-              // Handle completed single song
+              console.log('Song download URL:', data.directDownloadUrl);
               if (data.directDownloadUrl) {
                 displaySongResult(data);
-                clearInterval(statusCheckInterval);
-                statusCheckInterval = null;
-                activeDownloadId = null;
-                pollStartTime = null;
                 showToast('Lagu berhasil diunduh!', 'success');
+              } else {
+                console.error('No directDownloadUrl in response!');
+                showError("URL download tidak ditemukan");
               }
             }
+
+            // FORCE RETURN to prevent any further execution
+            return;
           } else if (data.status === "error") {
-            showError("Terjadi kesalahan saat mengunduh");
             clearInterval(statusCheckInterval);
             statusCheckInterval = null;
             activeDownloadId = null;
             pollStartTime = null;
+            progressArea.classList.add("hidden");
+            showError("Terjadi kesalahan saat mengunduh");
           }
         }
       } catch (error) {
@@ -669,10 +693,10 @@
         statusCheckInterval = null;
         activeDownloadId = null;
         pollStartTime = null;
+        progressArea.classList.add("hidden");
         showError("Terjadi kesalahan koneksi. Silakan coba lagi.");
       }
     }
-
     function displaySongResult(data) {
       songTitle.textContent = data.songName || "Lagu Spotify";
       songDetails.textContent = `Diunduh pada ${new Date().toLocaleTimeString()}`;
