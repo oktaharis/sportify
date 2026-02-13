@@ -4,35 +4,27 @@ services:
     container_name: sportify
     restart: unless-stopped
 
-    # Mount downloads folder ke host agar file tidak hilang saat container restart
     volumes:
       - ./downloads:/app/downloads
 
     environment:
-      - PORT=3001
+      - PORT=4001
 
-    # Tidak perlu expose port ke host karena Traefik yang handle
     expose:
-      - "3001"
+      - "4001"
 
     labels:
-      # Aktifkan Traefik untuk container ini
       - "traefik.enable=true"
 
-      # ⚠️  GANTI: sportify.domainmu.com → domain/subdomain yang kamu mau
       - "traefik.http.routers.sportify.rule=Host(`sportify.spacelix.qzz.io`)"
 
-      # Gunakan entrypoint "web" (port 80) — Traefik akan auto-redirect ke HTTPS jika tersedia
       - "traefik.http.routers.sportify.entrypoints=web"
 
-      # Port internal container
-      - "traefik.http.services.sportify.loadbalancer.server.port=3001"
+      - "traefik.http.services.sportify.loadbalancer.server.port=4001"
 
-    # Harus di network yang sama dengan Traefik
     networks:
       - docker_infra
 
-# Gunakan network external yang sudah dibuat Traefik
 networks:
   docker_infra:
     external: true
